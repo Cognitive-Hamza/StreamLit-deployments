@@ -11,10 +11,19 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
     }
     .stApp {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+    }
+    [data-testid="stAppViewContainer"] {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+    }
+    [data-testid="stHeader"] {
+        background: transparent !important;
+    }
+    section[data-testid="stSidebar"] {
+        background: #1a1a2e !important;
     }
     .main-header {
         text-align: center;
@@ -31,11 +40,11 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     .card {
-        background: white;
+        background: transparent;
         padding: 2rem;
         border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        border: 4px solid #2196F3;
+        box-shadow: none;
+        border: none;
         margin: 1rem 0;
     }
     .step-header {
@@ -59,7 +68,7 @@ st.markdown("""
     .step-title {
         font-size: 2rem;
         font-weight: bold;
-        color: #1a1a2e;
+        color: white;
     }
     .grade-card {
         background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
@@ -76,30 +85,37 @@ st.markdown("""
         text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
     }
     .stat-card {
-        background: #e3f2fd;
+        background: rgba(33, 150, 243, 0.15);
         padding: 1.5rem;
         border-radius: 15px;
         text-align: center;
         border: 2px solid #2196F3;
     }
+    .stat-card p {
+        color: white !important;
+    }
     .stat-value {
         font-size: 2.5rem;
         font-weight: bold;
-        color: #1976D2;
+        color: white !important;
     }
     .subject-item {
-        background: #f5f5f5;
+        background: rgba(255, 255, 255, 0.1);
         padding: 1rem;
         border-radius: 10px;
         margin: 0.5rem 0;
-        border: 2px solid #e0e0e0;
+        border: 2px solid #2196F3;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        color: white;
+    }
+    .subject-item * {
+        color: white !important;
     }
     .subject-item:hover {
-        background: #e3f2fd;
-        border-color: #2196F3;
+        background: rgba(33, 150, 243, 0.2);
+        border-color: #64b5f6;
     }
     .progress-bar {
         background: #e0e0e0;
@@ -128,11 +144,51 @@ st.markdown("""
         box-shadow: 0 5px 15px rgba(33,150,243,0.4);
     }
     .welcome-box {
-        background: #e3f2fd;
+        background: rgba(33, 150, 243, 0.2);
         padding: 1.5rem;
         border-radius: 15px;
         border: 2px solid #2196F3;
         margin: 1rem 0;
+        color: white;
+    }
+    .stTextInput > div > div > input {
+        background: white !important;
+        color: #1a1a2e !important;
+        border: 2px solid #2196F3 !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        font-size: 1.1rem !important;
+    }
+    .stTextInput > div > div > input::placeholder {
+        color: #999 !important;
+        opacity: 1 !important;
+    }
+    .stNumberInput > div > div > input {
+        background: white !important;
+        color: #1a1a2e !important;
+        border: 2px solid #2196F3 !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        font-size: 1.1rem !important;
+    }
+    .stNumberInput > div > div > input::placeholder {
+        color: #999 !important;
+        opacity: 1 !important;
+    }
+    h1, h2, h3, h4, h5, h6, p, span, div, label {
+        color: white !important;
+    }
+    .stMarkdown {
+        color: white !important;
+    }
+    .stMarkdown p {
+        color: white !important;
+    }
+    .stMarkdown span {
+        color: white !important;
+    }
+    .stMarkdown strong {
+        color: white !important;
     }
     .footer {
         text-align: center;
@@ -160,14 +216,14 @@ st.markdown('<div class="main-header">🎓 Academic Result Calculator</div>', un
 st.markdown('<div class="subtitle">Professional grade calculation system</div>', unsafe_allow_html=True)
 
 # Main card container
-# st.markdown('<div class="card">', unsafe_allow_html=True)
+st.markdown('<div class="card">', unsafe_allow_html=True)
 
 # Step 1: Name Input
 if st.session_state.step == 1:
-    st.markdown('<div class="step-header"><div style="color: white; text-align: center: lightblue;" class="step-title">Student Name</div></div>', unsafe_allow_html=True)
+    st.markdown('<h2 style="color: white; margin-bottom: 1.5rem;">Student Name</h2>', unsafe_allow_html=True)
     
-    st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
-    name = st.text_input( "Enter your full name", key="name_input", placeholder="e.g., Ahmed Ali Khan")
+    st.markdown('<label style="font-size: 1.2rem; font-weight: 600; color: white; display: block; margin-bottom: 0.5rem;">Enter your full name</label>', unsafe_allow_html=True)
+    name = st.text_input("Enter your full name", key="name_input", placeholder="e.g., Ahmed Ali Khan", label_visibility="collapsed")
     
     if st.button("Next Step →", key="name_btn"):
         if name and name.replace(" ", "").isalpha():
@@ -179,12 +235,12 @@ if st.session_state.step == 1:
 
 # Step 2: Number of Subjects
 elif st.session_state.step == 2:
-    st.markdown('<div class="step-header"><div style="color: white; text-align: center: lightblue;" class="step-title">Number of Subjects</div></div>', unsafe_allow_html=True)
+    st.markdown('<h2 style="color: white; margin-bottom: 1.5rem;">Number of Subjects</h2>', unsafe_allow_html=True)
     
     st.markdown(f'<div class="welcome-box"><strong>Welcome, {st.session_state.name}! 🎓</strong></div>', unsafe_allow_html=True)
-    st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
     
-    num_subjects = st.number_input("How many subjects? (Max 10)", min_value=1, max_value=10, step=1, key="num_input")
+    st.markdown('<label style="font-size: 1.2rem; font-weight: 600; color: white; display: block; margin-bottom: 0.5rem;">How many subjects? (Max 10)</label>', unsafe_allow_html=True)
+    num_subjects = st.number_input("How many subjects? (Max 10)", min_value=1, max_value=10, step=1, key="num_input", label_visibility="collapsed")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -202,7 +258,7 @@ elif st.session_state.step == 2:
 
 # Step 3: Subject Entry
 elif st.session_state.step == 3:
-    st.markdown('<div class="step-header"><div style="color: white; text-align: center: lightblue;" class="step-title">Enter Subject Details</div></div>', unsafe_allow_html=True)
+    st.markdown('<h2 style="color: white; margin-bottom: 1.5rem;">Enter Subject Details</h2>', unsafe_allow_html=True)
     
     # Progress
     progress = len(st.session_state.subjects) / st.session_state.num_subjects
@@ -214,19 +270,18 @@ elif st.session_state.step == 3:
     if st.session_state.subjects:
         st.markdown("### ✅ Added Subjects")
         for idx, sub in enumerate(st.session_state.subjects):
-            
             st.markdown(f'<div class="subject-item"><span><strong>{idx+1}. {sub["name"]}</strong></span><span><strong>{sub["marks"]}/150</strong></span></div>', unsafe_allow_html=True)
-        
-        st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
     
     # Current subject input
     if len(st.session_state.subjects) < st.session_state.num_subjects:
-        # st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
-        st.markdown(f'<h3 style="color: white;">Subject {len(st.session_state.subjects) + 1}</h3>', unsafe_allow_html=True)
-        st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
-        subject_name = st.text_input("Subject Name", key=f"sub_name_{len(st.session_state.subjects)}", placeholder="e.g., Mathematics")
-        subject_marks = st.number_input("Marks (0-150)", min_value=0, max_value=150, step=1, key=f"sub_marks_{len(st.session_state.subjects)}")
+        st.markdown(f"### Subject {len(st.session_state.subjects) + 1}")
+        
+        st.markdown('<label style="font-size: 1.1rem; font-weight: 600; color: white; display: block; margin-bottom: 0.5rem;">Subject Name</label>', unsafe_allow_html=True)
+        subject_name = st.text_input("Subject Name", key=f"sub_name_{len(st.session_state.subjects)}", placeholder="e.g., Mathematics", label_visibility="collapsed")
+        
+        st.markdown('<label style="font-size: 1.1rem; font-weight: 600; color: white; display: block; margin-bottom: 0.5rem;">Marks (0-150)</label>', unsafe_allow_html=True)
+        subject_marks = st.number_input("Marks (0-150)", min_value=0, max_value=150, step=1, key=f"sub_marks_{len(st.session_state.subjects)}", label_visibility="collapsed")
         
         btn_text = "🎯 Calculate Result" if len(st.session_state.subjects) + 1 == st.session_state.num_subjects else "✓ Add Subject"
         
@@ -267,10 +322,10 @@ elif st.session_state.step == 3:
 
 # Step 4: Results
 elif st.session_state.step == 4:
-    st.markdown('<div style="text-align: center; margin-bottom: 2rem;"><h2>🏆 Result Card</h2><p style="color: #666;">Your academic performance summary</p></div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; margin-bottom: 2rem;"><h2 style="color: white;">🏆 Result Card</h2><p style="color: #64b5f6;">Your academic performance summary</p></div>', unsafe_allow_html=True)
     
     # Student name
-    st.markdown(f'<div class="welcome-box" style="text-align: center;"><h3>{st.session_state.name}</h3></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="welcome-box" style="text-align: center;"><h3 style="color: white;">{st.session_state.name}</h3></div>', unsafe_allow_html=True)
     
     # Grade display
     st.markdown(f'<div class="grade-card"><p style="color: white; font-size: 1.5rem; margin-bottom: 1rem;">Your Grade</p><div class="grade-display">{st.session_state.result["grade"]}</div></div>', unsafe_allow_html=True)
@@ -280,14 +335,14 @@ elif st.session_state.step == 4:
     with col1:
         st.markdown(f'''
         <div class="stat-card">
-            <p style="color: #666; font-weight: bold; margin-bottom: 0.5rem;">📈 Percentage</p>
+            <p style="color: white; font-weight: bold; margin-bottom: 0.5rem;">📈 Percentage</p>
             <div class="stat-value">{st.session_state.result["percentage"]}%</div>
         </div>
         ''', unsafe_allow_html=True)
     with col2:
         st.markdown(f'''
         <div class="stat-card">
-            <p style="color: #666; font-weight: bold; margin-bottom: 0.5rem;">⭐ Total Marks</p>
+            <p style="color: white; font-weight: bold; margin-bottom: 0.5rem;">⭐ Total Marks</p>
             <div class="stat-value">{st.session_state.result["total"]}/{st.session_state.result["max_total"]}</div>
         </div>
         ''', unsafe_allow_html=True)
@@ -300,8 +355,8 @@ elif st.session_state.step == 4:
         sub_percentage = round((sub["marks"] / 150) * 100)
         st.markdown(f'''
         <div class="subject-item">
-            <span><strong>{idx+1}. {sub["name"]}</strong></span>
-            <span><strong>{sub["marks"]}/150</strong> <span style="color: #666;">({sub_percentage}%)</span></span>
+            <span style="color: white;"><strong>{idx+1}. {sub["name"]}</strong></span>
+            <span style="color: white;"><strong>{sub["marks"]}/150</strong> <span style="color: #64b5f6;">({sub_percentage}%)</span></span>
         </div>
         ''', unsafe_allow_html=True)
     
