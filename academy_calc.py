@@ -160,13 +160,14 @@ st.markdown('<div class="main-header">🎓 Academic Result Calculator</div>', un
 st.markdown('<div class="subtitle">Professional grade calculation system</div>', unsafe_allow_html=True)
 
 # Main card container
-st.markdown('<div class="card">', unsafe_allow_html=True)
+# st.markdown('<div class="card">', unsafe_allow_html=True)
 
 # Step 1: Name Input
 if st.session_state.step == 1:
-    st.markdown('<div class="step-header"><div class="step-number">1</div><div class="step-title">Student Name</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-header"><div style="color: white; text-align: center: lightblue;" class="step-title">Student Name</div></div>', unsafe_allow_html=True)
     
-    name = st.text_input("Enter your full name", key="name_input", placeholder="e.g., Ahmed Ali Khan")
+    st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
+    name = st.text_input( "Enter your full name", key="name_input", placeholder="e.g., Ahmed Ali Khan")
     
     if st.button("Next Step →", key="name_btn"):
         if name and name.replace(" ", "").isalpha():
@@ -178,9 +179,10 @@ if st.session_state.step == 1:
 
 # Step 2: Number of Subjects
 elif st.session_state.step == 2:
-    st.markdown('<div class="step-header"><div class="step-number">2</div><div class="step-title">Number of Subjects</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-header"><div style="color: white; text-align: center: lightblue;" class="step-title">Number of Subjects</div></div>', unsafe_allow_html=True)
     
     st.markdown(f'<div class="welcome-box"><strong>Welcome, {st.session_state.name}! 🎓</strong></div>', unsafe_allow_html=True)
+    st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
     
     num_subjects = st.number_input("How many subjects? (Max 10)", min_value=1, max_value=10, step=1, key="num_input")
     
@@ -200,7 +202,7 @@ elif st.session_state.step == 2:
 
 # Step 3: Subject Entry
 elif st.session_state.step == 3:
-    st.markdown('<div class="step-header"><div class="step-number">3</div><div class="step-title">Enter Subject Details</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-header"><div style="color: white; text-align: center: lightblue;" class="step-title">Enter Subject Details</div></div>', unsafe_allow_html=True)
     
     # Progress
     progress = len(st.session_state.subjects) / st.session_state.num_subjects
@@ -212,13 +214,17 @@ elif st.session_state.step == 3:
     if st.session_state.subjects:
         st.markdown("### ✅ Added Subjects")
         for idx, sub in enumerate(st.session_state.subjects):
+            
             st.markdown(f'<div class="subject-item"><span><strong>{idx+1}. {sub["name"]}</strong></span><span><strong>{sub["marks"]}/150</strong></span></div>', unsafe_allow_html=True)
+        
+        st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
     
     # Current subject input
     if len(st.session_state.subjects) < st.session_state.num_subjects:
-        st.markdown(f"### Subject {len(st.session_state.subjects) + 1}")
-        
+        # st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
+        st.markdown(f'<h3 style="color: white;">Subject {len(st.session_state.subjects) + 1}</h3>', unsafe_allow_html=True)
+        st.markdown('<style>label[data-testid="stWidgetLabel"] p { color: white !important; }</style>', unsafe_allow_html=True)
         subject_name = st.text_input("Subject Name", key=f"sub_name_{len(st.session_state.subjects)}", placeholder="e.g., Mathematics")
         subject_marks = st.number_input("Marks (0-150)", min_value=0, max_value=150, step=1, key=f"sub_marks_{len(st.session_state.subjects)}")
         
