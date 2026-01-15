@@ -412,4 +412,3 @@ if st.session_state.show_receipt:
 
 # Footer
 st.markdown("---")
-st.markdown("<p class='subtitle' style='text-align: center;'>Made with ❤️ for Students</p>", unsafe_allow_html=True)
