@@ -342,3 +342,5 @@ else:
             if st.button("✅ Finish Order"):
                 st.session_state.show_receipt = True
                 st.rerun()
+
+# ..
