@@ -335,25 +335,7 @@ elif st.session_state.page == 'peak':
             fig.update_yaxes(title="Number of Calls")
             col.plotly_chart(fig, use_container_width=True)
     
-    st.markdown("---")
-    
-    # Day and Hour Heatmap
-    st.subheader("🔥 Call Volume Heatmap (Day × Hour)")
-    
-    heatmap_data = df.groupby(['day_name', 'hour']).size().reset_index(name='count')
-    heatmap_pivot = heatmap_data.pivot(index='day_name', columns='hour', values='count').fillna(0)
-    
-    # Reorder days
-    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    heatmap_pivot = heatmap_pivot.reindex([d for d in day_order if d in heatmap_pivot.index])
-    
-    fig = px.imshow(
-        heatmap_pivot,
-        labels=dict(x="Hour of Day", y="Day of Week", color="Calls"),
-        title="Call Volume by Day and Hour",
-        color_continuous_scale="YlOrRd"
-    )
-    st.plotly_chart(fig, use_container_width=True)
+
 
 # =========================
 # PAGE 3: PERFORMANCE
