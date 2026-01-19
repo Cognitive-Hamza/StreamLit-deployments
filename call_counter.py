@@ -171,7 +171,7 @@ if st.session_state.page != 'upload':
             st.rerun()
     
     with col2:
-        if st.button("⏰ Peak Hours"):
+        if st.button("📅 Peak Times"):
             st.session_state.page = 'peak'
             st.rerun()
     
@@ -218,46 +218,111 @@ if st.session_state.page == 'overview':
     
     st.markdown("---")
     
-    # Duration Analysis
-    st.subheader("⏱️ Call Duration Analysis")
+    # Inbound vs Outbound Comparison
+    st.subheader("📞 Inbound vs Outbound Comparison")
     
-    order = [
-        "0-30 sec", "30 sec-1 min", "1-2 min", "3-5 min",
-        "5-10 min", "10-20 min", "20-30 min", "30+ min"
-    ]
-    duration_counts = df["duration_category"].value_counts().reindex(order, fill_value=0)
+    col1, col2 = st.columns(2)
     
-    c1, c2 = st.columns(2)
-    with c1:
-        fig = px.bar(x=duration_counts.index, y=duration_counts.values, text=duration_counts.values,
-                     title="Call Duration Distribution")
+    with col1:
+        # Call counts comparison
+        inbound_count = len(df[df["Call Type"] == "inbound"])
+        outbound_count = len(df[df["Call Type"] == "outbound"])
+        
+        fig = px.bar(
+            x=["Inbound", "Outbound"],
+            y=[inbound_count, outbound_count],
+            title="Total Calls: Inbound vs Outbound",
+            labels={"x": "Call Type", "y": "Number of Calls"},
+            text=[inbound_count, outbound_count],
+            color=["Inbound", "Outbound"],
+            color_discrete_map={"Inbound": "#636EFA", "Outbound": "#EF553B"}
+        )
         fig.update_traces(textposition="outside")
         st.plotly_chart(fig, use_container_width=True)
-    with c2:
-        fig = px.pie(values=duration_counts.values, names=duration_counts.index,
-                     title="Call Duration Breakdown")
+    
+    with col2:
+        # Answer rate comparison
+        inbound_df = df[df["Call Type"] == "inbound"]
+        outbound_df = df[df["Call Type"] == "outbound"]
+        
+        inbound_answered = len(inbound_df[inbound_df["Call Status"] == "ANSWERED"])
+        outbound_answered = len(outbound_df[outbound_df["Call Status"] == "ANSWERED"])
+        
+        inbound_rate = (inbound_answered / len(inbound_df) * 100) if len(inbound_df) else 0
+        outbound_rate = (outbound_answered / len(outbound_df) * 100) if len(outbound_df) else 0
+        
+        fig = px.bar(
+            x=["Inbound", "Outbound"],
+            y=[inbound_rate, outbound_rate],
+            title="Answer Rate: Inbound vs Outbound",
+            labels={"x": "Call Type", "y": "Answer Rate (%)"},
+            text=[f"{inbound_rate:.1f}%", f"{outbound_rate:.1f}%"],
+            color=["Inbound", "Outbound"],
+            color_discrete_map={"Inbound": "#00CC96", "Outbound": "#FFA15A"}
+        )
+        fig.update_traces(textposition="outside")
         st.plotly_chart(fig, use_container_width=True)
     
-    st.markdown(pd.DataFrame({
-        "Duration Range": duration_counts.index,
-        "Calls": duration_counts.values,
-        "Percentage": (duration_counts.values/len(df)*100).round(1).astype(str)+"%"
-    }).to_html(index=False), unsafe_allow_html=True)
+    # Detailed comparison table
+    comparison_data = pd.DataFrame({
+        "Metric": ["Total Calls", "Answered", "Not Answered", "Answer Rate"],
+        "Inbound": [
+            inbound_count,
+            inbound_answered,
+            len(inbound_df[inbound_df["Call Status"] == "NO ANSWER"]),
+            f"{inbound_rate:.1f}%"
+        ],
+        "Outbound": [
+            outbound_count,
+            outbound_answered,
+            len(outbound_df[outbound_df["Call Status"] == "NO ANSWER"]),
+            f"{outbound_rate:.1f}%"
+        ]
+    })
+    st.markdown(comparison_data.to_html(index=False), unsafe_allow_html=True)
+
+# =========================
+# PAGE 2: PEAK TIMES
+# =========================
+elif st.session_state.page == 'peak':
+    st.header("📅 Peak Times Analysis")
+    
+    # Add day of week and day name
+    df['day_of_week'] = df['Call Date time'].dt.dayofweek
+    df['day_name'] = df['Call Date time'].dt.day_name()
+    
+    # Calls by Day of Week
+    st.subheader("📊 Calls by Day of Week")
+    
+    day_counts = df.groupby(['day_of_week', 'day_name']).size().reset_index(name='count')
+    day_counts = day_counts.sort_values('day_of_week')
+    
+    fig = px.bar(
+        day_counts,
+        x='day_name',
+        y='count',
+        title="Total Calls per Day of Week",
+        labels={'day_name': 'Day of Week', 'count': 'Number of Calls'},
+        text='count',
+        color='count',
+        color_continuous_scale='Blues'
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_xaxes(categoryorder='array', categoryarray=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Table with day-wise breakdown
+    day_table = pd.DataFrame({
+        'Day': day_counts['day_name'],
+        'Total Calls': day_counts['count'],
+        'Percentage': (day_counts['count'] / day_counts['count'].sum() * 100).round(1).astype(str) + '%'
+    })
+    st.markdown(day_table.to_html(index=False), unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Call Type Analysis
-    st.subheader("📞 Call Type Analysis")
-    type_counts = df["Call Type"].value_counts()
-    fig = px.pie(values=type_counts.values, names=type_counts.index,
-                 title="Inbound vs Outbound Calls")
-    st.plotly_chart(fig, use_container_width=True)
-
-# =========================
-# PAGE 2: PEAK HOURS
-# =========================
-elif st.session_state.page == 'peak':
-    st.header("⏰ Peak Hours Analysis")
+    # Hourly Analysis
+    st.subheader("⏰ Calls by Hour of Day")
     
     c1, c2 = st.columns(2)
     for call_type, col in zip(["inbound", "outbound"], [c1, c2]):
@@ -269,6 +334,26 @@ elif st.session_state.page == 'peak':
             fig.update_xaxes(title="Hour of Day")
             fig.update_yaxes(title="Number of Calls")
             col.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Day and Hour Heatmap
+    st.subheader("🔥 Call Volume Heatmap (Day × Hour)")
+    
+    heatmap_data = df.groupby(['day_name', 'hour']).size().reset_index(name='count')
+    heatmap_pivot = heatmap_data.pivot(index='day_name', columns='hour', values='count').fillna(0)
+    
+    # Reorder days
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    heatmap_pivot = heatmap_pivot.reindex([d for d in day_order if d in heatmap_pivot.index])
+    
+    fig = px.imshow(
+        heatmap_pivot,
+        labels=dict(x="Hour of Day", y="Day of Week", color="Calls"),
+        title="Call Volume by Day and Hour",
+        color_continuous_scale="YlOrRd"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # =========================
 # PAGE 3: PERFORMANCE
@@ -344,7 +429,38 @@ elif st.session_state.page == 'rankings':
 # PAGE 5: DURATION
 # =========================
 elif st.session_state.page == 'duration':
-    st.header("⏱️ Date-wise Call Duration Analysis")
+    st.header("⏱️ Call Duration Analysis")
+    
+    # Duration Analysis (moved from Overview)
+    st.subheader("📊 Call Duration Distribution")
+    
+    order = [
+        "0-30 sec", "30 sec-1 min", "1-2 min", "3-5 min",
+        "5-10 min", "10-20 min", "20-30 min", "30+ min"
+    ]
+    duration_counts = df["duration_category"].value_counts().reindex(order, fill_value=0)
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        fig = px.bar(x=duration_counts.index, y=duration_counts.values, text=duration_counts.values,
+                     title="Call Duration Distribution")
+        fig.update_traces(textposition="outside")
+        st.plotly_chart(fig, use_container_width=True)
+    with c2:
+        fig = px.pie(values=duration_counts.values, names=duration_counts.index,
+                     title="Call Duration Breakdown")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown(pd.DataFrame({
+        "Duration Range": duration_counts.index,
+        "Calls": duration_counts.values,
+        "Percentage": (duration_counts.values/len(df)*100).round(1).astype(str)+"%"
+    }).to_html(index=False), unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Date-wise Analysis
+    st.header("📅 Date-wise Call Duration Analysis")
     
     # Extract date from datetime
     df['date'] = df['Call Date time'].dt.date
