@@ -341,7 +341,7 @@ elif st.session_state.page == 'rankings':
         st.info("No outbound calls found")
 
 # =========================
-# PAGE 5: DURATION & SUMMARY
+# PAGE 5: DURATION
 # =========================
 elif st.session_state.page == 'duration':
     st.header("⏱️ Date-wise Call Duration Analysis")
@@ -445,159 +445,137 @@ elif st.session_state.page == 'duration':
     st.session_state.summary_table = summary_table
 
 # =========================
-# PAGE 6: EXECUTIVE SUMMARY
+# PAGE 6: SUMMARY
 # =========================
 elif st.session_state.page == 'summary':
-    st.header("📝 Executive Summary")
+    st.header("📝 Summary Report")
     
     # Calculate overall statistics
-    inbound_df = df[df["Call Type"] == "inbound"]
-    outbound_df = df[df["Call Type"] == "outbound"]
+    total_calls = len(df)
     
     # Inbound stats
-    inbound_answered = len(inbound_df[inbound_df["Call Status"] == "ANSWERED"])
-    inbound_not_answered = len(inbound_df[inbound_df["Call Status"] == "NO ANSWER"])
+    inbound_df = df[df["Call Type"] == "inbound"]
     inbound_total = len(inbound_df)
-    inbound_answer_rate = (inbound_answered / inbound_total * 100) if inbound_total else 0
-    inbound_not_answer_rate = 100 - inbound_answer_rate if inbound_total else 0
+    inbound_answered = len(inbound_df[inbound_df["Call Status"] == "ANSWERED"])
+    inbound_unanswered = len(inbound_df[inbound_df["Call Status"] == "NO ANSWER"])
     
     # Outbound stats
-    outbound_answered = len(outbound_df[outbound_df["Call Status"] == "ANSWERED"])
-    outbound_not_answered = len(outbound_df[outbound_df["Call Status"] == "NO ANSWER"])
+    outbound_df = df[df["Call Type"] == "outbound"]
     outbound_total = len(outbound_df)
-    outbound_answer_rate = (outbound_answered / outbound_total * 100) if outbound_total else 0
-    outbound_not_answer_rate = 100 - outbound_answer_rate if outbound_total else 0
+    outbound_answered = len(outbound_df[outbound_df["Call Status"] == "ANSWERED"])
+    outbound_unanswered = len(outbound_df[outbound_df["Call Status"] == "NO ANSWER"])
     
-    # Busy and Failed calls (combined)
+    # Busy and Failed calls
     busy_calls = len(df[df["Call Status"] == "BUSY"])
     failed_calls = len(df[df["Call Status"] == "FAILED"])
     
-    # Create summary metrics
-    st.subheader("📊 Overall Call Statistics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Inbound Calls", f"{inbound_total:,}")
-    col2.metric("Total Outbound Calls", f"{outbound_total:,}")
-    col3.metric("Busy Calls", f"{busy_calls:,}")
-    col4.metric("Failed Calls", f"{failed_calls:,}")
-    
-    st.markdown("---")
-    
-    # Detailed breakdown table
-    st.subheader("📋 Detailed Call Breakdown")
-    
-    # Calculate total calls for percentage calculation
-    total_all_calls = len(df)
-    
-    summary_data = pd.DataFrame([
-        {
-            "Metric": "Inbound Answered",
-            "Count": inbound_answered,
-            "Percentage": f"{(inbound_answered/total_all_calls*100):.1f}%"
-        },
-        {
-            "Metric": "Inbound Not Answered",
-            "Count": inbound_not_answered,
-            "Percentage": f"{(inbound_not_answered/total_all_calls*100):.1f}%"
-        },
-        {
-            "Metric": "Outbound Answered",
-            "Count": outbound_answered,
-            "Percentage": f"{(outbound_answered/total_all_calls*100):.1f}%"
-        },
-        {
-            "Metric": "Outbound Not Answered",
-            "Count": outbound_not_answered,
-            "Percentage": f"{(outbound_not_answered/total_all_calls*100):.1f}%"
-        },
-        {
-            "Metric": "Busy Calls",
-            "Count": busy_calls,
-            "Percentage": f"{(busy_calls/total_all_calls*100):.1f}%"
-        },
-        {
-            "Metric": "Failed Calls",
-            "Count": failed_calls,
-            "Percentage": f"{(failed_calls/total_all_calls*100):.1f}%"
-        }
-    ])
-    
-    st.markdown(summary_data.to_html(index=False), unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Answer rates comparison
-    st.subheader("📈 Answer Rate Comparison")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric("Inbound Answer Rate", f"{inbound_answer_rate:.1f}%", 
-                 help=f"Answered: {inbound_answered} | Not Answered: {inbound_not_answered}")
-        st.metric("Inbound Not Answer Rate", f"{inbound_not_answer_rate:.1f}%")
-    
-    with col2:
-        st.metric("Outbound Answer Rate", f"{outbound_answer_rate:.1f}%",
-                 help=f"Answered: {outbound_answered} | Not Answered: {outbound_not_answered}")
-        st.metric("Outbound Not Answer Rate", f"{outbound_not_answer_rate:.1f}%")
-    
-    # Visual comparison
-    st.markdown("---")
-    st.subheader("📊 Visual Analysis")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig = px.bar(
-            x=["Inbound", "Outbound"],
-            y=[inbound_answer_rate, outbound_answer_rate],
-            title="Answer Rate Comparison",
-            labels={"x": "Call Type", "y": "Answer Rate (%)"},
-            text=[f"{inbound_answer_rate:.1f}%", f"{outbound_answer_rate:.1f}%"]
-        )
-        fig.update_traces(textposition="outside")
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        fig = px.pie(
-            values=[inbound_answered, inbound_not_answered, outbound_answered, outbound_not_answered, busy_calls, failed_calls],
-            names=["Inbound Answered", "Inbound Not Answered", "Outbound Answered", "Outbound Not Answered", "Busy", "Failed"],
-            title="Overall Call Status Distribution"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # Calls per Day of Week Analysis
-    st.subheader("📅 Calls by Day of Week")
-    
-    # Extract day of week (0=Monday, 6=Sunday)
-    df['day_of_week'] = df['Call Date time'].dt.dayofweek
-    df['day_name'] = df['Call Date time'].dt.day_name()
-    
-    # Count calls per day of week
-    day_counts = df.groupby(['day_of_week', 'day_name']).size().reset_index(name='count')
-    day_counts = day_counts.sort_values('day_of_week')
-    
-    fig = px.bar(
-        day_counts,
-        x='day_name',
-        y='count',
-        title="Number of Calls per Day of Week",
-        labels={'day_name': 'Day of Week', 'count': 'Number of Calls'},
-        text='count'
-    )
-    fig.update_traces(textposition='outside')
-    fig.update_xaxes(categoryorder='array', categoryarray=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Show table with day-wise breakdown
-    day_table = pd.DataFrame({
-        'Day': day_counts['day_name'],
-        'Total Calls': day_counts['count'],
-        'Percentage': (day_counts['count'] / day_counts['count'].sum() * 100).round(1).astype(str) + '%'
+    # Create Summary Section 1
+    summary_section1 = pd.DataFrame({
+        "Total calls Inbound/Outbound": [f"{inbound_total}/{outbound_total}"],
+        "Total Answered (Inbound/Outbound)": [f"{inbound_answered}/{outbound_answered}"],
+        "Total Unanswered (Inbound/Outbound)": [f"{inbound_unanswered}/{outbound_unanswered}"],
+        "Busy (Outbound)": [busy_calls],
+        "Failed (Outbound)": [failed_calls]
     })
-    st.markdown(day_table.to_html(index=False), unsafe_allow_html=True)
+    
+    # Create Summary Section 2
+    summary_section2 = pd.DataFrame({
+        "": ["Total Inbound", "", "Total Outbound", ""],
+        " ": ["Answered", "Unanswered", "Answered", "Unanswered"]
+    })
+    
+    # Create Summary Section 3
+    summary_section3 = pd.DataFrame({
+        "Metric": ["Inbound Answered", "Inbound Not Answered", "Outbound Answered", 
+                   "Outbound Not Answered", "Busy Calls", "Failed Calls"],
+        "Count": [inbound_answered, inbound_unanswered, outbound_answered, 
+                  outbound_unanswered, busy_calls, failed_calls],
+        "Percentage": [
+            f"{(inbound_answered/total_calls*100):.1f}%" if total_calls else "0.0%",
+            f"{(inbound_unanswered/total_calls*100):.1f}%" if total_calls else "0.0%",
+            f"{(outbound_answered/total_calls*100):.1f}%" if total_calls else "0.0%",
+            f"{(outbound_unanswered/total_calls*100):.1f}%" if total_calls else "0.0%",
+            f"{(busy_calls/total_calls*100):.1f}%" if total_calls else "0.0%",
+            f"{(failed_calls/total_calls*100):.1f}%" if total_calls else "0.0%"
+        ]
+    })
+    
+    # Create Agent Performance Table
+    agent_performance_rows = []
+    for agent in df["Agent Name"].unique():
+        a = df[df["Agent Name"] == agent]
+        
+        dept = a["Department"].mode()[0] if len(a["Department"].mode()) > 0 else "Unknown"
+        
+        # Inbound
+        inbound = a[a["Call Type"] == "inbound"]
+        inbound_duration_mins = inbound["duration_minutes"].sum()
+        inbound_hours = int(inbound_duration_mins // 60)
+        inbound_mins = int(inbound_duration_mins % 60)
+        
+        # Outbound
+        outbound = a[a["Call Type"] == "outbound"]
+        outbound_duration_mins = outbound["duration_minutes"].sum()
+        outbound_hours = int(outbound_duration_mins // 60)
+        outbound_mins = int(outbound_duration_mins % 60)
+        
+        # Total
+        total_duration_mins = a["duration_minutes"].sum()
+        total_hours = int(total_duration_mins // 60)
+        total_mins = int(total_duration_mins % 60)
+        
+        agent_performance_rows.append({
+            "Agent Name": agent,
+            "Department": dept,
+            "Inbound Duration": f"{inbound_hours}h {inbound_mins}m",
+            "Outbound Duration": f"{outbound_hours}h {outbound_mins}m",
+            "Total Calls": len(a),
+            "Total Duration": f"{total_hours}h {total_mins}m",
+            "Sort_Minutes": total_duration_mins
+        })
+    
+    agent_performance = pd.DataFrame(agent_performance_rows).sort_values("Sort_Minutes", ascending=False).reset_index(drop=True)
+    agent_performance = agent_performance.drop(columns=["Sort_Minutes"])
+    agent_performance.insert(0, "Rank", range(1, len(agent_performance)+1))
+    
+    # Display Preview
+    st.subheader("📊 Summary Overview")
+    st.markdown(summary_section1.to_html(index=False), unsafe_allow_html=True)
+    
+    st.markdown("---")
+    st.subheader("📋 Call Status Breakdown")
+    st.markdown(summary_section3.to_html(index=False), unsafe_allow_html=True)
+    
+    st.markdown("---")
+    st.subheader("🏆 Agent Performance Summary")
+    st.markdown(agent_performance.to_html(index=False), unsafe_allow_html=True)
+    
+    # Create Excel file with all sections
+    from io import BytesIO
+    output = BytesIO()
+    
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Write Section 1
+        summary_section1.to_excel(writer, sheet_name='Summary', index=False, startrow=0)
+        
+        # Write Section 2 (headers)
+        summary_section2.to_excel(writer, sheet_name='Summary', index=False, startrow=3, header=False)
+        
+        # Write Section 3
+        summary_section3.to_excel(writer, sheet_name='Summary', index=False, startrow=8)
+        
+        # Write Agent Performance
+        agent_performance.to_excel(writer, sheet_name='Summary', index=False, startrow=17)
+    
+    excel_data = output.getvalue()
+    
+    st.markdown("---")
+    st.download_button(
+        label="📥 Download Summary Report (Excel)",
+        data=excel_data,
+        file_name=f"summary_report_{datetime.now().strftime('%Y%m%d')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # =========================
 # PAGE 7: EXPORT
