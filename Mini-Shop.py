@@ -412,3 +412,5 @@ if st.session_state.show_receipt:
 
 # Footer
 st.markdown("---")
+
+# ...    
