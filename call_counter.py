@@ -248,11 +248,30 @@ if st.session_state.page == 'overview':
     c3.metric("Answered Rate", f"{(len(answered)/len(df))*100:.1f}%")
     c4.metric("Not Answered", len(df[df["Call Status"] == "NO ANSWER"]))
     
-    # Show Unknown calls stats
-    if len(df_unknown) > 0:
-        st.info(f"📌 Unknown Calls (PBX Menu): {len(df_unknown)} calls | Not Answered: {len(df_unknown[df_unknown['Call Status'] == 'NO ANSWER'])}")
-    
     st.markdown("---")
+    
+    # Unknown Calls Section
+    if len(df_unknown) > 0:
+        st.subheader("🔍 Unknown Calls (PBX Menu)")
+        st.warning(f"⚠️ {len(df_unknown)} calls from Unknown agents - These calls were not picked up and were cut from PBX menu")
+        
+        col1, col2, col3 = st.columns(3)
+        unknown_answered = len(df_unknown[df_unknown["Call Status"] == "ANSWERED"])
+        unknown_not_answered = len(df_unknown[df_unknown["Call Status"] == "NO ANSWER"])
+        unknown_rate = (unknown_answered / len(df_unknown) * 100) if len(df_unknown) else 0
+        
+        col1.metric("Total Unknown Calls", len(df_unknown))
+        col2.metric("Unknown Answered", unknown_answered)
+        col3.metric("Unknown Not Answered", unknown_not_answered)
+        
+        # Unknown calls breakdown table
+        unknown_summary = pd.DataFrame({
+            "Metric": ["Total Unknown Calls", "Answered", "Not Answered", "Answer Rate"],
+            "Count": [len(df_unknown), unknown_answered, unknown_not_answered, f"{unknown_rate:.1f}%"]
+        })
+        st.markdown(unknown_summary.to_html(index=False), unsafe_allow_html=True)
+        
+        st.markdown("---")
     
     # Check if we have agent data for comparison
     if len(df_agents) == 0:
@@ -814,6 +833,26 @@ elif st.session_state.page == 'summary':
     st.subheader("🏆 Agent Performance Summary")
     st.markdown(agent_performance.to_html(index=False), unsafe_allow_html=True)
     
+    # Add Unknown calls summary if present
+    if len(df_unknown) > 0:
+        st.markdown("---")
+        st.subheader("🔍 Unknown Calls Summary")
+        
+        unknown_summary_df = pd.DataFrame({
+            "Metric": ["Total Unknown Calls", "Answered", "Not Answered"],
+            "Count": [
+                len(df_unknown),
+                len(df_unknown[df_unknown["Call Status"] == "ANSWERED"]),
+                len(df_unknown[df_unknown["Call Status"] == "NO ANSWER"])
+            ],
+            "Percentage": [
+                "100%",
+                f"{(len(df_unknown[df_unknown['Call Status'] == 'ANSWERED']) / len(df_unknown) * 100):.1f}%",
+                f"{(len(df_unknown[df_unknown['Call Status'] == 'NO ANSWER']) / len(df_unknown) * 100):.1f}%"
+            ]
+        })
+        st.markdown(unknown_summary_df.to_html(index=False), unsafe_allow_html=True)
+    
     # Create Excel file with all sections
     from io import BytesIO
     output = BytesIO()
@@ -830,6 +869,11 @@ elif st.session_state.page == 'summary':
         
         # Write Agent Performance
         agent_performance.to_excel(writer, sheet_name='Summary', index=False, startrow=17)
+        
+        # Write Unknown calls if present
+        if len(df_unknown) > 0:
+            current_row = 17 + len(agent_performance) + 3
+            unknown_summary_df.to_excel(writer, sheet_name='Summary', index=False, startrow=current_row)
     
     excel_data = output.getvalue()
     
