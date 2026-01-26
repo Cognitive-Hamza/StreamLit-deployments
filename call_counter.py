@@ -34,20 +34,6 @@ if 'page' not in st.session_state:
     st.session_state.page = 'upload'
 
 # =========================
-# INITIALIZE DATAFRAMES
-# =========================
-df = pd.DataFrame()
-df_agents = pd.DataFrame()
-df_unknown = pd.DataFrame()
-
-if 'df' in st.session_state:
-    df = st.session_state.df
-if 'df_agents' in st.session_state:
-    df_agents = st.session_state.df_agents
-if 'df_unknown' in st.session_state:
-    df_unknown = st.session_state.df_unknown
-
-# =========================
 # FILE UPLOAD PAGE
 # =========================
 if st.session_state.page == 'upload':
@@ -133,14 +119,9 @@ if st.session_state.page == 'upload':
     
     df["duration_category"] = df["duration_minutes"].apply(duration_bucket)
     
-    # Separate Unknown agents (PBX menu calls) BEFORE applying duration calculations
-    df_unknown = df[df["Agent Name"].str.upper() == "UNKNOWN"].copy()
-    df_agents = df[df["Agent Name"].str.upper() != "UNKNOWN"].copy()
-    
     # Store in session state
     st.session_state.df = df
-    st.session_state.df_unknown = df_unknown
-    st.session_state.df_agents = df_agents
+    st.session_state.df_unknown = df[df["Agent Name"] == "Unknown"].copy()
     st.session_state.page = 'overview'
     st.rerun()
 
@@ -178,13 +159,12 @@ def build_agent_table(data):
 # NAVIGATION
 # =========================
 if st.session_state.page != 'upload':
+    df = st.session_state.df
+    df_unknown = st.session_state.df_unknown
+    
     st.title("📞 Call Log Analysis Dashboard")
     
-    # Show Unknown calls alert if present
-    if len(df_unknown) > 0:
-        st.warning(f"⚠️ {len(df_unknown)} calls from Unknown agents (PBX Menu) - These are shown separately below")
-    
-    # Navigation buttons
+    # Navigation buttons (now 8 columns)
     col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
     
     with col1:
@@ -213,18 +193,18 @@ if st.session_state.page != 'upload':
             st.rerun()
     
     with col6:
-        if st.button("🔍 Unknown"):
-            st.session_state.page = 'unknown'
-            st.rerun()
-    
-    with col7:
         if st.button("📝 Summary"):
             st.session_state.page = 'summary'
             st.rerun()
     
-    with col8:
+    with col7:
         if st.button("💾 Export"):
             st.session_state.page = 'export'
+            st.rerun()
+    
+    with col8:
+        if st.button("❓ Unknown"):
+            st.session_state.page = 'unknown'
             st.rerun()
     
     st.markdown("---")
@@ -237,12 +217,7 @@ if st.session_state.page == 'overview':
     
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Total Calls", len(df))
-    
-    # Check if df_agents has data
-    if len(df_agents) > 0:
-        c2.metric("Total Agents", df_agents["Agent Name"].nunique())
-    else:
-        c2.metric("Total Agents", 0)
+    c2.metric("Total Agents", df["Agent Name"].nunique())
     
     answered = df[df["Call Status"] == "ANSWERED"]
     c3.metric("Answered Rate", f"{(len(answered)/len(df))*100:.1f}%")
@@ -250,43 +225,14 @@ if st.session_state.page == 'overview':
     
     st.markdown("---")
     
-    # Unknown Calls Section
-    if len(df_unknown) > 0:
-        st.subheader("🔍 Unknown Calls (PBX Menu)")
-        st.warning(f"⚠️ {len(df_unknown)} calls from Unknown agents - These calls were not picked up and were cut from PBX menu")
-        
-        col1, col2, col3 = st.columns(3)
-        unknown_answered = len(df_unknown[df_unknown["Call Status"] == "ANSWERED"])
-        unknown_not_answered = len(df_unknown[df_unknown["Call Status"] == "NO ANSWER"])
-        unknown_rate = (unknown_answered / len(df_unknown) * 100) if len(df_unknown) else 0
-        
-        col1.metric("Total Unknown Calls", len(df_unknown))
-        col2.metric("Unknown Answered", unknown_answered)
-        col3.metric("Unknown Not Answered", unknown_not_answered)
-        
-        # Unknown calls breakdown table
-        unknown_summary = pd.DataFrame({
-            "Metric": ["Total Unknown Calls", "Answered", "Not Answered", "Answer Rate"],
-            "Count": [len(df_unknown), unknown_answered, unknown_not_answered, f"{unknown_rate:.1f}%"]
-        })
-        st.markdown(unknown_summary.to_html(index=False), unsafe_allow_html=True)
-        
-        st.markdown("---")
-    
-    # Check if we have agent data for comparison
-    if len(df_agents) == 0:
-        st.warning("⚠️ All calls are from Unknown agents. No agent performance data available.")
-        st.stop()
-    
-    # Inbound vs Outbound Comparison (excluding Unknown)
-    st.subheader("📞 Inbound vs Outbound Comparison (Agent Calls Only)")
+    # Inbound vs Outbound Comparison
+    st.subheader("📞 Inbound vs Outbound Comparison")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        # Call counts comparison
-        inbound_count = len(df_agents[df_agents["Call Type"] == "inbound"])
-        outbound_count = len(df_agents[df_agents["Call Type"] == "outbound"])
+        inbound_count = len(df[df["Call Type"] == "inbound"])
+        outbound_count = len(df[df["Call Type"] == "outbound"])
         
         fig = px.bar(
             x=["Inbound", "Outbound"],
@@ -301,15 +247,14 @@ if st.session_state.page == 'overview':
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        # Answer rate comparison (excluding Unknown)
-        inbound_df_agents = df_agents[df_agents["Call Type"] == "inbound"]
-        outbound_df_agents = df_agents[df_agents["Call Type"] == "outbound"]
+        inbound_df = df[df["Call Type"] == "inbound"]
+        outbound_df = df[df["Call Type"] == "outbound"]
         
-        inbound_answered = len(inbound_df_agents[inbound_df_agents["Call Status"] == "ANSWERED"])
-        outbound_answered = len(outbound_df_agents[outbound_df_agents["Call Status"] == "ANSWERED"])
+        inbound_answered = len(inbound_df[inbound_df["Call Status"] == "ANSWERED"])
+        outbound_answered = len(outbound_df[outbound_df["Call Status"] == "ANSWERED"])
         
-        inbound_rate = (inbound_answered / len(inbound_df_agents) * 100) if len(inbound_df_agents) else 0
-        outbound_rate = (outbound_answered / len(outbound_df_agents) * 100) if len(outbound_df_agents) else 0
+        inbound_rate = (inbound_answered / len(inbound_df) * 100) if len(inbound_df) else 0
+        outbound_rate = (outbound_answered / len(outbound_df) * 100) if len(outbound_df) else 0
         
         fig = px.bar(
             x=["Inbound", "Outbound"],
@@ -323,23 +268,46 @@ if st.session_state.page == 'overview':
         fig.update_traces(textposition="outside")
         st.plotly_chart(fig, use_container_width=True)
     
-    # Detailed comparison table
     comparison_data = pd.DataFrame({
         "Metric": ["Total Calls", "Answered", "Not Answered", "Answer Rate"],
         "Inbound": [
             inbound_count,
             inbound_answered,
-            len(inbound_df_agents[inbound_df_agents["Call Status"] == "NO ANSWER"]),
+            len(inbound_df[inbound_df["Call Status"] == "NO ANSWER"]),
             f"{inbound_rate:.1f}%"
         ],
         "Outbound": [
             outbound_count,
             outbound_answered,
-            len(outbound_df_agents[outbound_df_agents["Call Status"] == "NO ANSWER"]),
+            len(outbound_df[outbound_df["Call Status"] == "NO ANSWER"]),
             f"{outbound_rate:.1f}%"
         ]
     })
     st.markdown(comparison_data.to_html(index=False), unsafe_allow_html=True)
+
+    # =========================
+    # UNKNOWN CALLS SECTION IN OVERVIEW
+    # =========================
+    if len(df_unknown) > 0:
+        st.subheader("🔍 Unknown Calls (PBX Menu)")
+        st.warning(f"⚠️ {len(df_unknown)} calls from Unknown agents - These calls were not picked up and were cut from PBX menu")
+        
+        col1, col2, col3 = st.columns(3)
+        unknown_answered = len(df_unknown[df_unknown["Call Status"] == "ANSWERED"])
+        unknown_not_answered = len(df_unknown[df_unknown["Call Status"] == "NO ANSWER"])
+        unknown_rate = (unknown_answered / len(df_unknown) * 100) if len(df_unknown) else 0
+        
+        col1.metric("Total Unknown Calls", len(df_unknown))
+        col2.metric("Unknown Answered", unknown_answered)
+        col3.metric("Unknown Not Answered", unknown_not_answered)
+        
+        unknown_summary = pd.DataFrame({
+            "Metric": ["Total Unknown Calls", "Answered", "Not Answered", "Answer Rate"],
+            "Count": [len(df_unknown), unknown_answered, unknown_not_answered, f"{unknown_rate:.1f}%"]
+        })
+        st.markdown(unknown_summary.to_html(index=False), unsafe_allow_html=True)
+        
+        st.markdown("---")
 
 # =========================
 # PAGE 2: PEAK TIMES
@@ -347,15 +315,12 @@ if st.session_state.page == 'overview':
 elif st.session_state.page == 'peak':
     st.header("📅 Peak Times Analysis")
     
-    # Add day of week and day name
-    df_temp = df.copy()
-    df_temp['day_of_week'] = df_temp['Call Date time'].dt.dayofweek
-    df_temp['day_name'] = df_temp['Call Date time'].dt.day_name()
+    df['day_of_week'] = df['Call Date time'].dt.dayofweek
+    df['day_name'] = df['Call Date time'].dt.day_name()
     
-    # Calls by Day of Week
     st.subheader("📊 Calls by Day of Week")
     
-    day_counts = df_temp.groupby(['day_of_week', 'day_name']).size().reset_index(name='count')
+    day_counts = df.groupby(['day_of_week', 'day_name']).size().reset_index(name='count')
     day_counts = day_counts.sort_values('day_of_week')
     
     fig = px.bar(
@@ -372,7 +337,6 @@ elif st.session_state.page == 'peak':
     fig.update_xaxes(categoryorder='array', categoryarray=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
     st.plotly_chart(fig, use_container_width=True)
     
-    # Table with day-wise breakdown
     day_table = pd.DataFrame({
         'Day': day_counts['day_name'],
         'Total Calls': day_counts['count'],
@@ -382,7 +346,6 @@ elif st.session_state.page == 'peak':
     
     st.markdown("---")
     
-    # Hourly Analysis
     st.subheader("⏰ Calls by Hour of Day")
     
     c1, c2 = st.columns(2)
@@ -395,22 +358,13 @@ elif st.session_state.page == 'peak':
             fig.update_xaxes(title="Hour of Day")
             fig.update_yaxes(title="Number of Calls")
             col.plotly_chart(fig, use_container_width=True)
-    
-
 
 # =========================
 # PAGE 3: PERFORMANCE
 # =========================
 elif st.session_state.page == 'performance':
-    st.header("👥 Overall Agent Performance (Excluding Unknown)")
-    
-    # Check if df_agents exists and has data
-    if len(df_agents) == 0:
-        st.error("⚠️ No agent data available. All calls are from Unknown agents.")
-        st.info("Please check the 'Unknown' tab to see PBX menu calls.")
-        st.stop()
-    
-    overall_table = build_agent_table(df_agents)
+    st.header("👥 Overall Agent Performance")
+    overall_table = build_agent_table(df)
     st.markdown(overall_table.to_html(index=False), unsafe_allow_html=True)
     
     st.markdown("---")
@@ -418,8 +372,8 @@ elif st.session_state.page == 'performance':
     st.header("🏆 Agent Leaderboard")
     
     leaderboard_rows = []
-    for agent in df_agents["Agent Name"].unique():
-        a = df_agents[df_agents["Agent Name"] == agent]
+    for agent in df["Agent Name"].unique():
+        a = df[df["Agent Name"] == agent]
         
         dept = a["Department"].mode()[0] if len(a["Department"].mode()) > 0 else "Unknown"
         
@@ -453,16 +407,10 @@ elif st.session_state.page == 'performance':
 # PAGE 4: RANKINGS
 # =========================
 elif st.session_state.page == 'rankings':
-    st.header("📥📤 Inbound & Outbound Agent Rankings (Excluding Unknown)")
-    
-    # Check if df_agents exists and has data
-    if len(df_agents) == 0:
-        st.error("⚠️ No agent data available. All calls are from Unknown agents.")
-        st.info("Please check the 'Unknown' tab to see PBX menu calls.")
-        st.stop()
+    st.header("📥📤 Inbound & Outbound Agent Rankings")
     
     st.subheader("📥 Inbound Ranking")
-    inbound_df = df_agents[df_agents["Call Type"]=="inbound"]
+    inbound_df = df[df["Call Type"]=="inbound"]
     if len(inbound_df):
         inbound_table = build_agent_table(inbound_df)
         st.markdown(inbound_table.to_html(index=False), unsafe_allow_html=True)
@@ -473,7 +421,7 @@ elif st.session_state.page == 'rankings':
     st.markdown("---")
     
     st.subheader("📤 Outbound Ranking")
-    outbound_df = df_agents[df_agents["Call Type"]=="outbound"]
+    outbound_df = df[df["Call Type"]=="outbound"]
     if len(outbound_df):
         outbound_table = build_agent_table(outbound_df)
         st.markdown(outbound_table.to_html(index=False), unsafe_allow_html=True)
@@ -487,20 +435,13 @@ elif st.session_state.page == 'rankings':
 elif st.session_state.page == 'duration':
     st.header("⏱️ Call Duration Analysis")
     
-    # Check if df_agents exists and has data
-    if len(df_agents) == 0:
-        st.error("⚠️ No agent data available. All calls are from Unknown agents.")
-        st.info("Please check the 'Unknown' tab to see PBX menu calls.")
-        st.stop()
-    
-    # Duration Analysis (moved from Overview)
     st.subheader("📊 Call Duration Distribution")
     
     order = [
         "0-30 sec", "30 sec-1 min", "1-2 min", "3-5 min",
         "5-10 min", "10-20 min", "20-30 min", "30+ min"
     ]
-    duration_counts = df_agents["duration_category"].value_counts().reindex(order, fill_value=0)
+    duration_counts = df["duration_category"].value_counts().reindex(order, fill_value=0)
     
     c1, c2 = st.columns(2)
     with c1:
@@ -516,41 +457,35 @@ elif st.session_state.page == 'duration':
     st.markdown(pd.DataFrame({
         "Duration Range": duration_counts.index,
         "Calls": duration_counts.values,
-        "Percentage": (duration_counts.values/len(df_agents)*100).round(1).astype(str)+"%"
+        "Percentage": (duration_counts.values/len(df)*100).round(1).astype(str)+"%"
     }).to_html(index=False), unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Date-wise Analysis
     st.header("📅 Date-wise Call Duration Analysis")
     
-    # Extract date from datetime
-    df_agents_copy = df_agents.copy()
-    df_agents_copy['date'] = df_agents_copy['Call Date time'].dt.date
+    df['date'] = df['Call Date time'].dt.date
     
     duration_rows = []
-    for date in sorted(df_agents_copy['date'].unique()):
-        day_data = df_agents_copy[df_agents_copy['date'] == date]
+    for date in sorted(df['date'].unique()):
+        day_data = df[df['date'] == date]
         
-        # Inbound calls
         inbound = day_data[day_data["Call Type"] == "inbound"]
         inbound_total = len(inbound)
-        inbound_answered = len(inbound[inbound["Call Status"] == "ANSWERED"])
         inbound_duration_mins = inbound["duration_minutes"].sum()
         inbound_hours = int(inbound_duration_mins // 60)
         inbound_mins = int(inbound_duration_mins % 60)
+        inbound_answered = len(inbound[inbound["Call Status"] == "ANSWERED"])
         inbound_rate = (inbound_answered / inbound_total * 100) if inbound_total else 0
         
-        # Outbound calls
         outbound = day_data[day_data["Call Type"] == "outbound"]
         outbound_total = len(outbound)
-        outbound_answered = len(outbound[outbound["Call Status"] == "ANSWERED"])
         outbound_duration_mins = outbound["duration_minutes"].sum()
         outbound_hours = int(outbound_duration_mins // 60)
         outbound_mins = int(outbound_duration_mins % 60)
+        outbound_answered = len(outbound[outbound["Call Status"] == "ANSWERED"])
         outbound_rate = (outbound_answered / outbound_total * 100) if outbound_total else 0
         
-        # Total
         total_duration_mins = day_data["duration_minutes"].sum()
         total_hours = int(total_duration_mins // 60)
         total_mins = int(total_duration_mins % 60)
@@ -579,11 +514,11 @@ elif st.session_state.page == 'duration':
     
     st.markdown("---")
     
-    st.header("📊 Final Summary Table (Agent Calls Only)")
+    st.header("📊 Final Summary Table")
     
     summary_rows = []
-    for agent in df_agents["Agent Name"].unique():
-        a = df_agents[df_agents["Agent Name"] == agent]
+    for agent in df["Agent Name"].unique():
+        a = df[df["Agent Name"] == agent]
         
         dept = a["Department"].mode()[0] if len(a["Department"].mode()) > 0 else "Unknown"
         
@@ -624,135 +559,26 @@ elif st.session_state.page == 'duration':
     st.session_state.summary_table = summary_table
 
 # =========================
-# PAGE 6: UNKNOWN CALLS (PBX MENU)
-# =========================
-elif st.session_state.page == 'unknown':
-    st.header("🔍 Unknown Calls (PBX Menu)")
-    
-    if len(df_unknown) == 0:
-        st.success("✅ No Unknown calls found! All calls were handled by agents.")
-        st.stop()
-    
-    st.warning(f"⚠️ Total Unknown Calls: {len(df_unknown)} - These calls were not picked up and were cut from PBX menu")
-    
-    # Unknown calls statistics
-    col1, col2, col3, col4 = st.columns(4)
-    
-    unknown_inbound = len(df_unknown[df_unknown["Call Type"] == "inbound"])
-    unknown_outbound = len(df_unknown[df_unknown["Call Type"] == "outbound"])
-    unknown_answered = len(df_unknown[df_unknown["Call Status"] == "ANSWERED"])
-    unknown_not_answered = len(df_unknown[df_unknown["Call Status"] == "NO ANSWER"])
-    
-    col1.metric("Inbound Unknown", unknown_inbound)
-    col2.metric("Outbound Unknown", unknown_outbound)
-    col3.metric("Answered", unknown_answered)
-    col4.metric("Not Answered", unknown_not_answered)
-    
-    st.markdown("---")
-    
-    # Hourly breakdown of unknown calls
-    st.subheader("⏰ Unknown Calls by Hour")
-    
-    if len(df_unknown) > 0:
-        unknown_hourly = df_unknown.groupby("hour").size().reset_index(name="count")
-        fig = px.bar(unknown_hourly, x="hour", y="count", 
-                     title="Unknown Calls Distribution by Hour",
-                     labels={"hour": "Hour of Day", "count": "Number of Calls"},
-                     text="count")
-        fig.update_traces(textposition="outside")
-        st.plotly_chart(fig, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # Call status breakdown
-    st.subheader("📊 Unknown Calls Status Breakdown")
-    
-    status_counts = df_unknown["Call Status"].value_counts()
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig = px.pie(values=status_counts.values, names=status_counts.index,
-                     title="Unknown Calls by Status")
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        status_table = pd.DataFrame({
-            "Status": status_counts.index,
-            "Count": status_counts.values,
-            "Percentage": (status_counts.values / len(df_unknown) * 100).round(1).astype(str) + "%"
-        })
-        st.markdown(status_table.to_html(index=False), unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Day-wise breakdown
-    st.subheader("📅 Unknown Calls by Date")
-    
-    if len(df_unknown) > 0:
-        df_unknown_copy = df_unknown.copy()
-        df_unknown_copy['date'] = df_unknown_copy['Call Date time'].dt.date
-        date_counts = df_unknown_copy.groupby('date').size().reset_index(name='count')
-        date_counts['date'] = pd.to_datetime(date_counts['date'])
-        date_counts = date_counts.sort_values('date')
-        
-        fig = px.line(date_counts, x='date', y='count', markers=True,
-                      title="Unknown Calls Trend Over Time",
-                      labels={"date": "Date", "count": "Number of Unknown Calls"})
-        st.plotly_chart(fig, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # Raw data table
-    st.subheader("📋 Unknown Calls Details")
-    
-    display_cols = ["Call Date time", "From", "To", "Duration", "Call Status", "Call Type", "Department"]
-    available_cols = [col for col in display_cols if col in df_unknown.columns]
-    
-    st.dataframe(df_unknown[available_cols].sort_values("Call Date time", ascending=False), 
-                 use_container_width=True, height=400)
-    
-    # Export unknown calls
-    st.markdown("---")
-    st.download_button(
-        "📥 Download Unknown Calls Data",
-        df_unknown.to_csv(index=False),
-        f"unknown_calls_{datetime.now().strftime('%Y%m%d')}.csv",
-        "text/csv"
-    )
-
-# =========================
-# PAGE 7: SUMMARY
+# PAGE 6: SUMMARY
 # =========================
 elif st.session_state.page == 'summary':
-    st.header("📝 Summary Report (Agent Calls Only)")
+    st.header("📝 Summary Report")
     
-    # Check if df_agents exists and has data
-    if len(df_agents) == 0:
-        st.error("⚠️ No agent data available. All calls are from Unknown agents.")
-        st.info("Please check the 'Unknown' tab to see PBX menu calls.")
-        st.stop()
+    total_calls = len(df)
     
-    # Calculate overall statistics (excluding Unknown)
-    total_calls = len(df_agents)
-    
-    # Inbound stats
-    inbound_df = df_agents[df_agents["Call Type"] == "inbound"]
+    inbound_df = df[df["Call Type"] == "inbound"]
     inbound_total = len(inbound_df)
     inbound_answered = len(inbound_df[inbound_df["Call Status"] == "ANSWERED"])
     inbound_unanswered = len(inbound_df[inbound_df["Call Status"] == "NO ANSWER"])
     
-    # Outbound stats
-    outbound_df = df_agents[df_agents["Call Type"] == "outbound"]
+    outbound_df = df[df["Call Type"] == "outbound"]
     outbound_total = len(outbound_df)
     outbound_answered = len(outbound_df[outbound_df["Call Status"] == "ANSWERED"])
     outbound_unanswered = len(outbound_df[outbound_df["Call Status"] == "NO ANSWER"])
     
-    # Busy and Failed calls (from agent calls only)
-    busy_calls = len(df_agents[df_agents["Call Status"] == "BUSY"])
-    failed_calls = len(df_agents[df_agents["Call Status"] == "FAILED"])
+    busy_calls = len(df[df["Call Status"] == "BUSY"])
+    failed_calls = len(df[df["Call Status"] == "FAILED"])
     
-    # Create Summary Section 1
     summary_section1 = pd.DataFrame({
         "Total calls Inbound/Outbound": [f"{inbound_total}/{outbound_total}"],
         "Total Answered (Inbound/Outbound)": [f"{inbound_answered}/{outbound_answered}"],
@@ -761,13 +587,6 @@ elif st.session_state.page == 'summary':
         "Failed (Outbound)": [failed_calls]
     })
     
-    # Create Summary Section 2
-    summary_section2 = pd.DataFrame({
-        "": ["Total Inbound", "", "Total Outbound", ""],
-        " ": ["Answered", "Unanswered", "Answered", "Unanswered"]
-    })
-    
-    # Create Summary Section 3
     summary_section3 = pd.DataFrame({
         "Metric": ["Inbound Answered", "Inbound Not Answered", "Outbound Answered", 
                    "Outbound Not Answered", "Busy Calls", "Failed Calls"],
@@ -783,26 +602,22 @@ elif st.session_state.page == 'summary':
         ]
     })
     
-    # Create Agent Performance Table
     agent_performance_rows = []
-    for agent in df_agents["Agent Name"].unique():
-        a = df_agents[df_agents["Agent Name"] == agent]
+    for agent in df["Agent Name"].unique():
+        a = df[df["Agent Name"] == agent]
         
         dept = a["Department"].mode()[0] if len(a["Department"].mode()) > 0 else "Unknown"
         
-        # Inbound
         inbound = a[a["Call Type"] == "inbound"]
         inbound_duration_mins = inbound["duration_minutes"].sum()
         inbound_hours = int(inbound_duration_mins // 60)
         inbound_mins = int(inbound_duration_mins % 60)
         
-        # Outbound
         outbound = a[a["Call Type"] == "outbound"]
         outbound_duration_mins = outbound["duration_minutes"].sum()
         outbound_hours = int(outbound_duration_mins // 60)
         outbound_mins = int(outbound_duration_mins % 60)
         
-        # Total
         total_duration_mins = a["duration_minutes"].sum()
         total_hours = int(total_duration_mins // 60)
         total_mins = int(total_duration_mins % 60)
@@ -821,7 +636,6 @@ elif st.session_state.page == 'summary':
     agent_performance = agent_performance.drop(columns=["Sort_Minutes"])
     agent_performance.insert(0, "Rank", range(1, len(agent_performance)+1))
     
-    # Display Preview
     st.subheader("📊 Summary Overview")
     st.markdown(summary_section1.to_html(index=False), unsafe_allow_html=True)
     
@@ -833,47 +647,13 @@ elif st.session_state.page == 'summary':
     st.subheader("🏆 Agent Performance Summary")
     st.markdown(agent_performance.to_html(index=False), unsafe_allow_html=True)
     
-    # Add Unknown calls summary if present
-    if len(df_unknown) > 0:
-        st.markdown("---")
-        st.subheader("🔍 Unknown Calls Summary")
-        
-        unknown_summary_df = pd.DataFrame({
-            "Metric": ["Total Unknown Calls", "Answered", "Not Answered"],
-            "Count": [
-                len(df_unknown),
-                len(df_unknown[df_unknown["Call Status"] == "ANSWERED"]),
-                len(df_unknown[df_unknown["Call Status"] == "NO ANSWER"])
-            ],
-            "Percentage": [
-                "100%",
-                f"{(len(df_unknown[df_unknown['Call Status'] == 'ANSWERED']) / len(df_unknown) * 100):.1f}%",
-                f"{(len(df_unknown[df_unknown['Call Status'] == 'NO ANSWER']) / len(df_unknown) * 100):.1f}%"
-            ]
-        })
-        st.markdown(unknown_summary_df.to_html(index=False), unsafe_allow_html=True)
-    
-    # Create Excel file with all sections
     from io import BytesIO
     output = BytesIO()
     
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Write Section 1
         summary_section1.to_excel(writer, sheet_name='Summary', index=False, startrow=0)
-        
-        # Write Section 2 (headers)
-        summary_section2.to_excel(writer, sheet_name='Summary', index=False, startrow=3, header=False)
-        
-        # Write Section 3
-        summary_section3.to_excel(writer, sheet_name='Summary', index=False, startrow=8)
-        
-        # Write Agent Performance
-        agent_performance.to_excel(writer, sheet_name='Summary', index=False, startrow=17)
-        
-        # Write Unknown calls if present
-        if len(df_unknown) > 0:
-            current_row = 17 + len(agent_performance) + 3
-            unknown_summary_df.to_excel(writer, sheet_name='Summary', index=False, startrow=current_row)
+        summary_section3.to_excel(writer, sheet_name='Summary', index=False, startrow=3)
+        agent_performance.to_excel(writer, sheet_name='Summary', index=False, startrow=9)
     
     excel_data = output.getvalue()
     
@@ -886,7 +666,7 @@ elif st.session_state.page == 'summary':
     )
 
 # =========================
-# PAGE 8: EXPORT
+# PAGE 7: EXPORT
 # =========================
 elif st.session_state.page == 'export':
     st.header("💾 Export Data")
@@ -956,3 +736,97 @@ elif st.session_state.page == 'export':
     )
     
     st.success("✅ All reports are ready for download!")
+
+# =========================
+# PAGE 8: UNKNOWN CALLS (PBX MENU)
+# =========================
+elif st.session_state.page == 'unknown':
+    df_unknown = st.session_state.df_unknown
+    
+    st.header("🔍 Unknown Calls (PBX Menu)")
+    
+    if len(df_unknown) == 0:
+        st.success("✅ No Unknown calls found! All calls were handled by agents.")
+        st.stop()
+    
+    st.warning(f"⚠️ Total Unknown Calls: {len(df_unknown)} - These calls were not picked up and were cut from PBX menu")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    unknown_inbound = len(df_unknown[df_unknown["Call Type"] == "inbound"])
+    unknown_outbound = len(df_unknown[df_unknown["Call Type"] == "outbound"])
+    unknown_answered = len(df_unknown[df_unknown["Call Status"] == "ANSWERED"])
+    unknown_not_answered = len(df_unknown[df_unknown["Call Status"] == "NO ANSWER"])
+    
+    col1.metric("Inbound Unknown", unknown_inbound)
+    col2.metric("Outbound Unknown", unknown_outbound)
+    col3.metric("Answered", unknown_answered)
+    col4.metric("Not Answered", unknown_not_answered)
+    
+    st.markdown("---")
+    
+    st.subheader("⏰ Unknown Calls by Hour")
+    
+    if len(df_unknown) > 0:
+        unknown_hourly = df_unknown.groupby("hour").size().reset_index(name="count")
+        fig = px.bar(unknown_hourly, x="hour", y="count", 
+                     title="Unknown Calls Distribution by Hour",
+                     labels={"hour": "Hour of Day", "count": "Number of Calls"},
+                     text="count")
+        fig.update_traces(textposition="outside")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    
+    st.subheader("📊 Unknown Calls Status Breakdown")
+    
+    status_counts = df_unknown["Call Status"].value_counts()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        fig = px.pie(values=status_counts.values, names=status_counts.index,
+                     title="Unknown Calls by Status")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        status_table = pd.DataFrame({
+            "Status": status_counts.index,
+            "Count": status_counts.values,
+            "Percentage": (status_counts.values / len(df_unknown) * 100).round(1).astype(str) + "%"
+        })
+        st.markdown(status_table.to_html(index=False), unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    st.subheader("📅 Unknown Calls by Date")
+    
+    if len(df_unknown) > 0:
+        df_unknown_copy = df_unknown.copy()
+        df_unknown_copy['date'] = df_unknown_copy['Call Date time'].dt.date
+        date_counts = df_unknown_copy.groupby('date').size().reset_index(name='count')
+        date_counts['date'] = pd.to_datetime(date_counts['date'])
+        date_counts = date_counts.sort_values('date')
+        
+        fig = px.line(date_counts, x='date', y='count', markers=True,
+                      title="Unknown Calls Trend Over Time",
+                      labels={"date": "Date", "count": "Number of Unknown Calls"})
+        st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    
+    st.subheader("📋 Unknown Calls Details")
+    
+    display_cols = ["Call Date time", "From", "To", "Duration", "Call Status", "Call Type", "Department"]
+    available_cols = [col for col in display_cols if col in df_unknown.columns]
+    
+    st.dataframe(df_unknown[available_cols].sort_values("Call Date time", ascending=False), 
+                 use_container_width=True, height=400)
+    
+    st.markdown("---")
+    st.download_button(
+        "📥 Download Unknown Calls Data",
+        df_unknown.to_csv(index=False),
+        f"unknown_calls_{datetime.now().strftime('%Y%m%d')}.csv",
+        "text/csv"
+    )
